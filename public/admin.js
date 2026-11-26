@@ -1,0 +1,10 @@
+const $=id=>document.getElementById(id);let cache={users:[],visits:[]};
+async function load(){const r=await fetch('/api/admin/data');if(!r.ok){location.href='/';return;}cache=await r.json();$('userCount').textContent=cache.users.length;$('visitCount').textContent=cache.visits.length;render();}
+function esc(v){return String(v??'—').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function render(){const q=$('search').value.toLowerCase();$('users').innerHTML=cache.users.filter(u=>(u.email+u.mobile).toLowerCase().includes(q)).map(u=>'<tr><td>'+esc(u.email)+'</td><td>'+esc(u.mobile||'—')+'</td><td>'+esc(u.createdAt)+'</td><td>'+esc(u.lastLogin||'—')+'</td><td><button class="danger" data-id="'+esc(u.id)+'">Delete</button></td></tr>').join('')||'<tr><td colspan="5">No users found.</td></tr>';
+$('visits').innerHTML=cache.visits.map(v=>'<tr><td>'+esc(v.email)+'</td><td>'+esc(v.ip)+(v.ipv6?' / '+esc(v.ipv6):'')+'</td><td>'+esc(v.latitude??'Not shared')+'</td><td>'+esc(v.longitude??'Not shared')+'</td><td>'+ (v.locationConsent?'Allowed':'No')+'</td><td>'+esc(v.visitedAt)+'</td><td>'+esc(v.userAgent)+'</td></tr>').join('')||'<tr><td colspan="7">No visit records yet.</td></tr>';
+}
+$('search').addEventListener('input',render);
+$('users').addEventListener('click',async e=>{if(!e.target.matches('button[data-id]'))return;if(!confirm('Delete this account and its visit history?'))return;await fetch('/api/admin/users/'+encodeURIComponent(e.target.dataset.id),{method:'DELETE'});load();});
+$('createUser').addEventListener('submit',async e=>{e.preventDefault();const r=await fetch('/api/admin/users',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:$('newEmail').value,mobile:$('newMobile').value,password:$('newPassword').value})});const d=await r.json();$('createMsg').textContent=d.error||'Account created.';if(r.ok){e.target.reset();load();}});
+$('logout').onclick=async()=>{await fetch('/api/admin/logout',{method:'POST'});location.href='/';};load();
